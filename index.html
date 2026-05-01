@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebComponent Sandbox & Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        darker: '#020617',
+                        panel: '#1e293b',
+                        primary: '#3b82f6',
+                        primaryHover: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: ui-sans-serif, system-ui, sans-serif;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .nav-btn.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Scrollbar personalizado */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .toast-enter {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        .toast-leave {
+            animation: slideOut 0.3s ease-in forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        #sandbox-preview {
+            background-image: radial-gradient(#334155 1px, transparent 0);
+            background-size: 20px 20px;
+            background-color: #0f172a;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header & Navigation -->
+    <header
+        class="bg-panel border-b border-slate-700 flex flex-col sm:flex-row items-center justify-between px-6 py-3 shrink-0">
+        <div class="flex items-center gap-3 mb-3 sm:mb-0">
+            <i data-lucide="box" class="text-primary w-6 h-6"></i>
+            <h1 class="font-bold text-xl tracking-wide">WC Manager</h1>
+        </div>
+
+        <nav class="flex gap-1 bg-dark p-1 rounded-lg">
+            <button onclick="switchTab('config')"
+                class="nav-btn active px-4 py-2 rounded-md hover:bg-slate-800 transition flex items-center gap-2 text-sm font-medium"
+                id="tab-btn-config">
+                <i data-lucide="settings" class="w-4 h-4"></i> Configuración
+            </button>
+            <button onclick="switchTab('upload')"
+                class="nav-btn px-4 py-2 rounded-md hover:bg-slate-800 transition flex items-center gap-2 text-sm font-medium"
+                id="tab-btn-upload">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i> Cargar a GitHub
+            </button>
+            <button onclick="switchTab('sandbox')"
+                class="nav-btn px-4 py-2 rounded-md hover:bg-slate-800 transition flex items-center gap-2 text-sm font-medium"
+                id="tab-btn-sandbox">
+                <i data-lucide="layout-template" class="w-4 h-4"></i> Sandbox
+            </button>
+        </nav>
+
+        <div class="flex items-center gap-2 text-sm mt-3 sm:mt-0">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400"></i>
+            <span id="active-profile-display" class="text-slate-300 font-medium">Ningún perfil activo</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-hidden relative">
+
+        <!-- VISTA: CONFIGURACIÓN -->
+        <section id="view-config" class="tab-content active h-full overflow-y-auto p-6">
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="bg-panel p-6 rounded-xl border border-slate-700 shadow-lg">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
+                        Añadir Nuevo Perfil
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Nombre del Perfil</label>
+                            <input type="text" id="profile-name"
+                                class="w-full bg-dark border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                                placeholder="Ej. Mi GitHub Personal">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Personal Access Token
+                                (PAT)</label>
+                            <input type="password" id="profile-token"
+                                class="w-full bg-dark border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                                placeholder="ghp_xxxxxxxxxxxx">
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">El token requiere el permiso <strong>repo</strong> (Full
+                        control of private repositories). Se guardará localmente en tu navegador.</p>
+                    <button onclick="addProfile()"
+                        class="mt-4 bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded-lg transition font-medium">
+                        Guardar Perfil
+                    </button>
+                </div>
+
+                <div class="bg-panel p-6 rounded-xl border border-slate-700 shadow-lg">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-primary"></i>
+                        Perfiles Guardados
+                    </h2>
+                    <div id="profiles-list" class="space-y-3">
+                        <!-- Perfiles dinámicos -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA: CARGAR A GITHUB -->
+        <section id="view-upload" class="tab-content h-full hidden flex-col">
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Sidebar Repos -->
+                <div class="w-80 bg-panel border-r border-slate-700 flex flex-col shrink-0">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                        <h3 class="font-semibold text-slate-200">Repositorios</h3>
+                        <button onclick="openNewRepoModal()"
+                            class="text-primary hover:text-blue-400 p-1 rounded-md hover:bg-slate-700 transition tooltip"
+                            title="Crear Repositorio">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div class="p-3">
+                        <button onclick="loadRepos('upload')"
+                            class="w-full bg-slate-700 hover:bg-slate-600 py-1.5 rounded text-sm mb-2 transition flex items-center justify-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Recargar
+                        </button>
+                        <input type="text" id="search-repo-upload" placeholder="Filtrar repos..."
+                            class="w-full bg-dark border border-slate-600 rounded px-3 py-1.5 text-sm focus:outline-none mb-2"
+                            onkeyup="filterRepos('upload')">
+                    </div>
+                    <div id="repo-list-upload" class="flex-1 overflow-y-auto px-2 pb-4 space-y-1">
+                        <p class="text-slate-500 text-sm text-center mt-4">Selecciona un perfil primero.</p>
+                    </div>
+                </div>
+
+                <!-- Main Area Upload -->
+                <div class="flex-1 p-6 overflow-y-auto relative bg-dark">
+                    <div id="upload-workspace" class="max-w-4xl mx-auto hidden space-y-6">
+                        <div class="flex items-center gap-3 border-b border-slate-700 pb-4">
+                            <i data-lucide="folder-git-2" class="w-8 h-8 text-primary"></i>
+                            <div>
+                                <h2 id="upload-repo-title" class="text-2xl font-bold">Selecciona un repositorio</h2>
+                                <p id="upload-repo-desc" class="text-slate-400 text-sm"></p>
+                            </div>
+                        </div>
+
+                        <div class="bg-panel border border-slate-700 rounded-xl p-6 shadow-lg">
+                            <h3 class="text-lg font-medium mb-4">Cargar Archivos</h3>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-400 mb-1">Ruta de destino
+                                        (opcional)</label>
+                                    <div class="flex bg-dark border border-slate-600 rounded-lg overflow-hidden">
+                                        <span
+                                            class="px-3 py-2 bg-slate-800 text-slate-500 border-r border-slate-600 text-sm">/</span>
+                                        <input type="text" id="upload-path"
+                                            class="w-full bg-transparent px-3 py-2 focus:outline-none text-sm"
+                                            placeholder="ej. src/components/">
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1">Deja vacío para subir a la raíz. Los archivos
+                                        mantendrán su estructura interna si subes una carpeta.</p>
+                                </div>
+
+                                <div
+                                    class="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-primary transition bg-darker/50 group relative">
+                                    <i data-lucide="file-up"
+                                        class="w-10 h-10 mx-auto text-slate-500 group-hover:text-primary mb-3"></i>
+                                    <p class="text-sm text-slate-300 mb-4">Arrastra archivos aquí o selecciona una
+                                        opción:</p>
+                                    <div class="flex justify-center gap-4">
+                                        <label
+                                            class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded cursor-pointer text-sm font-medium transition">
+                                            Seleccionar Archivos
+                                            <input type="file" id="file-input" multiple class="hidden"
+                                                onchange="handleFileSelection(event)">
+                                        </label>
+                                        <label
+                                            class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded cursor-pointer text-sm font-medium transition">
+                                            Seleccionar Carpeta
+                                            <input type="file" id="folder-input" webkitdirectory directory multiple
+                                                class="hidden" onchange="handleFileSelection(event)">
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="selected-files-container" class="hidden">
+                                    <h4 class="text-sm font-medium text-slate-300 mb-2 border-b border-slate-700 pb-1">
+                                        Archivos a subir (<span id="files-count">0</span>)</h4>
+                                    <ul id="selected-files-list"
+                                        class="max-h-40 overflow-y-auto text-xs text-slate-400 bg-dark rounded border border-slate-700 p-2 space-y-1">
+                                    </ul>
+                                    <div class="mt-4 flex justify-end gap-3">
+                                        <button onclick="clearFiles()"
+                                            class="px-4 py-2 text-sm text-slate-400 hover:text-white transition">Cancelar</button>
+                                        <button onclick="startUpload()"
+                                            class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-lg transition flex items-center gap-2">
+                                            <i data-lucide="upload" class="w-4 h-4"></i> Iniciar Carga
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Barra de progreso -->
+                                <div id="upload-progress-container"
+                                    class="hidden mt-4 bg-dark p-4 rounded-lg border border-slate-700">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span id="upload-status-text"
+                                            class="text-primary font-medium">Subiendo...</span>
+                                        <span id="upload-percentage" class="text-slate-400">0%</span>
+                                    </div>
+                                    <div class="w-full bg-slate-800 rounded-full h-2">
+                                        <div id="upload-progress-bar"
+                                            class="bg-primary h-2 rounded-full transition-all duration-300"
+                                            style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="upload-no-selection"
+                        class="h-full flex flex-col items-center justify-center text-slate-500">
+                        <i data-lucide="git-fork" class="w-16 h-16 mb-4 opacity-50"></i>
+                        <p>Selecciona un repositorio del panel lateral para gestionar sus archivos.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA: SANDBOX -->
+        <section id="view-sandbox" class="tab-content h-full hidden flex-col">
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Sidebar Sandbox (Repos & Archivos) -->
+                <div class="w-80 bg-panel border-r border-slate-700 flex flex-col shrink-0">
+
+                    <!-- Selección de Repo -->
+                    <div class="p-4 border-b border-slate-700 bg-slate-800/50">
+                        <label
+                            class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Repositorio</label>
+                        <select id="sandbox-repo-select" onchange="loadSandboxRepoFiles()"
+                            class="w-full bg-dark border border-slate-600 rounded px-2 py-1.5 text-sm focus:outline-none">
+                            <option value="">Seleccione un repositorio...</option>
+                        </select>
+                    </div>
+
+                    <!-- Navegador de Archivos -->
+                    <div class="flex-1 flex flex-col overflow-hidden">
+                        <div class="p-2 border-b border-slate-700 flex items-center gap-2 bg-dark">
+                            <button onclick="navigateUp()" class="p-1 hover:bg-slate-700 rounded text-slate-400"
+                                title="Subir nivel">
+                                <i data-lucide="corner-left-up" class="w-4 h-4"></i>
+                            </button>
+                            <div class="text-xs text-slate-300 truncate font-mono" id="sandbox-current-path">/</div>
+                        </div>
+                        <div id="sandbox-file-list" class="flex-1 overflow-y-auto p-2 space-y-1 bg-darker">
+                            <p class="text-slate-500 text-sm text-center mt-4">Selecciona un repo para ver sus archivos.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Componentes Inyectados -->
+                    <div class="h-1/3 border-t border-slate-700 bg-panel flex flex-col">
+                        <div class="p-2 border-b border-slate-700 bg-slate-800/50">
+                            <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Componentes
+                                Inyectados</h3>
+                        </div>
+                        <ul id="injected-components-list" class="flex-1 overflow-y-auto p-2 space-y-1 text-sm">
+                            <li class="text-slate-500 text-xs italic text-center mt-2">Ninguno cargado aún.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Main Area Sandbox -->
+                <div class="flex-1 flex flex-col bg-dark relative">
+                    <!-- Editor HTML -->
+                    <div class="h-1/3 border-b border-slate-700 flex flex-col">
+                        <div class="p-2 bg-panel flex justify-between items-center border-b border-slate-700">
+                            <h3 class="text-sm font-medium flex items-center gap-2">
+                                <i data-lucide="code-2" class="w-4 h-4 text-primary"></i> Editor HTML
+                            </h3>
+                            <button onclick="runSandboxHTML()"
+                                class="bg-primary hover:bg-primaryHover text-white px-3 py-1 rounded text-xs flex items-center gap-1 transition">
+                                <i data-lucide="play" class="w-3 h-3"></i> Renderizar
+                            </button>
+                        </div>
+                        <textarea id="sandbox-html-input"
+                            class="flex-1 w-full bg-darker text-slate-300 p-4 font-mono text-sm focus:outline-none resize-none"
+                            placeholder="<!-- Escribe aquí el HTML para probar tus Web Components -->&#10;<mi-componente></mi-componente>"></textarea>
+                    </div>
+
+                    <!-- Previsualización -->
+                    <div class="flex-1 flex flex-col relative">
+                        <div
+                            class="p-2 bg-panel flex justify-between items-center border-b border-slate-700 absolute top-0 left-0 right-0 z-10 opacity-70 hover:opacity-100 transition">
+                            <h3 class="text-sm font-medium flex items-center gap-2">
+                                <i data-lucide="monitor-play" class="w-4 h-4 text-green-400"></i> Previsualización
+                            </h3>
+                            <button onclick="clearSandbox()"
+                                class="text-slate-400 hover:text-red-400 text-xs flex items-center gap-1 transition">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i> Limpiar DOM
+                            </button>
+                        </div>
+                        <div id="sandbox-preview"
+                            class="flex-1 w-full h-full p-4 pt-12 overflow-auto text-black relative">
+                            <!-- El contenido inyectado vivirá dentro de este div o se encapsulará -->
+                            <div id="sandbox-dom-root"
+                                class="bg-white min-h-full rounded shadow-inner p-4 text-slate-900 border border-slate-300">
+                                <!-- El HTML del usuario va aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Crear Repo -->
+    <div id="modal-create-repo"
+        class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-panel border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <i data-lucide="folder-plus" class="text-primary w-5 h-5"></i> Crear Repositorio
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Nombre</label>
+                    <input type="text" id="new-repo-name"
+                        class="w-full bg-dark border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                        placeholder="ej. mis-webcomponents">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1">Descripción</label>
+                    <input type="text" id="new-repo-desc"
+                        class="w-full bg-dark border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-primary"
+                        placeholder="Colección de componentes">
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="new-repo-private"
+                        class="rounded bg-dark border-slate-600 text-primary focus:ring-primary h-4 w-4">
+                    <label for="new-repo-private" class="text-sm text-slate-300">Repositorio Privado</label>
+                </div>
+                <div
+                    class="bg-slate-800/50 p-3 rounded border border-slate-700 text-xs text-slate-400 flex items-start gap-2">
+                    <i data-lucide="info" class="w-4 h-4 shrink-0 mt-0.5 text-blue-400"></i>
+                    <p>Se añadirá automáticamente el tópico <code>wc-sandbox</code> para que esta herramienta lo resalte
+                        fácilmente en la lista.</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="closeNewRepoModal()"
+                    class="px-4 py-2 text-slate-400 hover:text-white transition">Cancelar</button>
+                <button onclick="submitCreateRepo()"
+                    class="bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded transition shadow-lg">Crear y
+                    Etiquetar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de Toasts (Notificaciones) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // --- CONSTANTES Y ESTADO ---
+        const GITHUB_API = 'https://api.github.com';
+        const APP_TOPIC = 'wc-sandbox';
+        let state = {
+            profiles: JSON.parse(localStorage.getItem('wc_profiles')) || [],
+            activeProfileIndex: localStorage.getItem('wc_active_index') !== null ? parseInt(localStorage.getItem('wc_active_index')) : -1,
+            repos: [],
+            currentRepo: null,
+            filesToUpload: [],
+            sandboxCurrentPath: '',
+            sandboxCurrentRepo: null,
+            injectedComponents: []
+        };
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderProfiles();
+            updateActiveProfileDisplay();
+
+            // Si hay un perfil activo, intentar cargar la vista principal
+            if (state.activeProfileIndex >= 0 && state.profiles[state.activeProfileIndex]) {
+                switchTab('upload');
+            } else {
+                switchTab('config');
+            }
+        });
+
+        // --- SISTEMA DE PESTAÑAS ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`view-${tabId}`).classList.add('active');
+            document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+
+            if (tabId === 'upload' || tabId === 'sandbox') {
+                if (state.activeProfileIndex === -1) {
+                    showToast('Por favor, selecciona un perfil primero', 'warning');
+                    switchTab('config');
+                    return;
+                }
+                if (state.repos.length === 0) {
+                    loadRepos(tabId);
+                } else if (tabId === 'sandbox') {
+                    populateSandboxRepos();
+                }
+            }
+        }
+
+        // --- SISTEMA DE NOTIFICACIONES ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgClass = 'bg-slate-800 border-slate-700';
+            let icon = '<i data-lucide="info" class="w-5 h-5 text-blue-400"></i>';
+            if (type === 'success') { bgClass = 'bg-green-900/90 border-green-700'; icon = '<i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>'; }
+            if (type === 'error') { bgClass = 'bg-red-900/90 border-red-700'; icon = '<i data-lucide="alert-circle" class="w-5 h-5 text-red-400"></i>'; }
+            if (type === 'warning') { bgClass = 'bg-yellow-900/90 border-yellow-700'; icon = '<i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-400"></i>'; }
+
+            toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg border shadow-xl text-sm text-white pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- UTILIDAD DE API GITHUB ---
+        async function api(endpoint, options = {}, asBlob = false) {
+            const profile = state.profiles[state.activeProfileIndex];
+            if (!profile) throw new Error("No hay perfil activo");
+
+            const headers = {
+                'Authorization': `token ${profile.token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                ...(options.headers || {})
+            };
+
+            const response = await fetch(`${GITHUB_API}${endpoint}`, { ...options, headers });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Error HTTP: ${response.status}`);
+            }
+
+            if (response.status === 204) return null; // No content
+            if (asBlob) return response.blob();
+            return response.json();
+        }
+
+        // --- MÓDULO DE CONFIGURACIÓN ---
+        function addProfile() {
+            const name = document.getElementById('profile-name').value.trim();
+            const token = document.getElementById('profile-token').value.trim();
+
+            if (!name || !token) return showToast('Nombre y token son obligatorios', 'error');
+
+            state.profiles.push({ name, token });
+            saveProfiles();
+
+            document.getElementById('profile-name').value = '';
+            document.getElementById('profile-token').value = '';
+            showToast('Perfil guardado exitosamente', 'success');
+
+            if (state.profiles.length === 1) setActiveProfile(0);
+            else renderProfiles();
+        }
+
+        function saveProfiles() {
+            localStorage.setItem('wc_profiles', JSON.stringify(state.profiles));
+            localStorage.setItem('wc_active_index', state.activeProfileIndex);
+            renderProfiles();
+            updateActiveProfileDisplay();
+        }
+
+        function setActiveProfile(index) {
+            state.activeProfileIndex = index;
+            state.repos = []; // Limpiar repos cacheados
+            saveProfiles();
+            showToast(`Perfil cambiado a: ${state.profiles[index].name}`, 'success');
+        }
+
+        function deleteProfile(index) {
+            if (confirm('¿Seguro que deseas eliminar este perfil?')) {
+                state.profiles.splice(index, 1);
+                if (state.activeProfileIndex === index) state.activeProfileIndex = -1;
+                else if (state.activeProfileIndex > index) state.activeProfileIndex--;
+                saveProfiles();
+            }
+        }
+
+        function renderProfiles() {
+            const list = document.getElementById('profiles-list');
+            list.innerHTML = '';
+
+            if (state.profiles.length === 0) {
+                list.innerHTML = '<p class="text-sm text-slate-500 italic">No hay perfiles guardados.</p>';
+                return;
+            }
+
+            state.profiles.forEach((p, idx) => {
+                const isActive = idx === state.activeProfileIndex;
+                const div = document.createElement('div');
+                div.className = `flex justify-between items-center p-3 rounded-lg border ${isActive ? 'border-primary bg-primary/10' : 'border-slate-700 bg-dark'}`;
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${isActive ? '<i data-lucide="check-circle-2" class="w-5 h-5 text-primary"></i>' : '<i data-lucide="circle" class="w-5 h-5 text-slate-600"></i>'}
+                        <div>
+                            <p class="font-medium text-slate-200">${p.name}</p>
+                            <p class="text-xs text-slate-500 font-mono">Token: ••••••••${p.token.slice(-4)}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        ${!isActive ? `<button onclick="setActiveProfile(${idx})" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition">Usar</button>` : `<span class="text-xs text-primary font-medium px-3 py-1.5 bg-primary/20 rounded">Activo</span>`}
+                        <button onclick="deleteProfile(${idx})" class="text-slate-400 hover:text-red-400 p-1.5 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+            lucide.createIcons({ root: list });
+        }
+
+        function updateActiveProfileDisplay() {
+            const display = document.getElementById('active-profile-display');
+            if (state.activeProfileIndex >= 0 && state.profiles[state.activeProfileIndex]) {
+                display.innerHTML = `<span class="text-primary font-bold">${state.profiles[state.activeProfileIndex].name}</span>`;
+            } else {
+                display.innerHTML = 'Ningún perfil activo';
+            }
+        }
+
+        // --- MÓDULO DE REPOSITORIOS (UPLOAD) ---
+        async function loadRepos(sourceTab) {
+            try {
+                showToast('Cargando repositorios...', 'info');
+                // Paginación simple para demo, idealmente manejar iteración
+                const repos = await api('/user/repos?per_page=100&sort=updated');
+                state.repos = repos;
+                renderRepoList('upload');
+                if (sourceTab === 'sandbox') populateSandboxRepos();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        function renderRepoList(viewId) {
+            const list = document.getElementById(`repo-list-${viewId}`);
+            const query = (document.getElementById(`search-repo-${viewId}`)?.value || '').toLowerCase();
+            list.innerHTML = '';
+
+            const filtered = state.repos.filter(r => r.name.toLowerCase().includes(query) || (r.description && r.description.toLowerCase().includes(query)));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<p class="text-slate-500 text-sm text-center mt-4">No se encontraron repositorios.</p>';
+                return;
+            }
+
+            filtered.forEach(repo => {
+                const isAppGenerated = repo.topics && repo.topics.includes(APP_TOPIC);
+                const isActive = state.currentRepo && state.currentRepo.id === repo.id;
+
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-3 flex flex-col gap-1 rounded-lg border transition mb-1 ${isActive ? 'bg-primary/20 border-primary' : 'bg-dark border-slate-700 hover:border-slate-500'}`;
+                btn.onclick = () => selectRepoForUpload(repo);
+
+                btn.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-medium text-sm text-slate-200 break-all">${repo.name}</span>
+                        ${isAppGenerated ? `<i data-lucide="star" class="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" title="Creado con WC Manager"></i>` : ''}
+                    </div>
+                    ${repo.description ? `<p class="text-xs text-slate-500 truncate" title="${repo.description}">${repo.description}</p>` : ''}
+                    <div class="flex gap-2 mt-1">
+                        ${repo.private ? `<span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 rounded">Privado</span>` : `<span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 rounded">Público</span>`}
+                    </div>
+                `;
+                list.appendChild(btn);
+            });
+            lucide.createIcons({ root: list });
+        }
+
+        function filterRepos(viewId) {
+            renderRepoList(viewId);
+        }
+
+        function selectRepoForUpload(repo) {
+            state.currentRepo = repo;
+            renderRepoList('upload'); // Para actualizar el seleccionado
+
+            document.getElementById('upload-no-selection').classList.add('hidden');
+            document.getElementById('upload-workspace').classList.remove('hidden');
+            document.getElementById('upload-repo-title').textContent = repo.name;
+            document.getElementById('upload-repo-desc').textContent = repo.description || 'Sin descripción';
+
+            // Limpiar área
+            clearFiles();
+            document.getElementById('upload-path').value = '';
+        }
+
+        // --- CREAR REPOSITORIO ---
+        function openNewRepoModal() { document.getElementById('modal-create-repo').classList.replace('hidden', 'flex'); }
+        function closeNewRepoModal() {
+            document.getElementById('modal-create-repo').classList.replace('flex', 'hidden');
+            document.getElementById('new-repo-name').value = '';
+            document.getElementById('new-repo-desc').value = '';
+            document.getElementById('new-repo-private').checked = false;
+        }
+
+        async function submitCreateRepo() {
+            const name = document.getElementById('new-repo-name').value.trim();
+            const desc = document.getElementById('new-repo-desc').value.trim();
+            const isPrivate = document.getElementById('new-repo-private').checked;
+
+            if (!name) return showToast('El nombre es obligatorio', 'error');
+
+            try {
+                showToast('Creando repositorio...', 'info');
+                // 1. Crear el repo
+                const repo = await api('/user/repos', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, description: desc, private: isPrivate, auto_init: true })
+                });
+
+                // 2. Añadir el Tópico para identificarlo (Requiere custom header en v3, pero fetch nativo suele funcionar)
+                await api(`/repos/${repo.owner.login}/${repo.name}/topics`, {
+                    method: 'PUT',
+                    headers: { 'Accept': 'application/vnd.github.mercy-preview+json' },
+                    body: JSON.stringify({ names: [APP_TOPIC] })
+                });
+
+                showToast('Repositorio creado y etiquetado', 'success');
+                closeNewRepoModal();
+                await loadRepos('upload');
+                selectRepoForUpload(state.repos.find(r => r.id === repo.id));
+
+            } catch (error) {
+                showToast('Error al crear: ' + error.message, 'error');
+            }
+        }
+
+        // --- MÓDULO DE SUBIDA DE ARCHIVOS ---
+        function handleFileSelection(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            // Evitar duplicados simples
+            const existingPaths = new Set(state.filesToUpload.map(f => f.path));
+            let added = 0;
+
+            files.forEach(file => {
+                const relativePath = file.webkitRelativePath || file.name;
+                if (!existingPaths.has(relativePath)) {
+                    state.filesToUpload.push({ file, path: relativePath });
+                    added++;
+                }
+            });
+
+            if (added > 0) renderSelectedFiles();
+            event.target.value = ''; // Reset input
+        }
+
+        function renderSelectedFiles() {
+            const container = document.getElementById('selected-files-container');
+            const list = document.getElementById('selected-files-list');
+            document.getElementById('files-count').textContent = state.filesToUpload.length;
+
+            if (state.filesToUpload.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            list.innerHTML = '';
+            state.filesToUpload.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-slate-800 p-1.5 rounded";
+                li.innerHTML = `
+                    <span class="truncate pr-2">${item.path} <span class="text-slate-500 ml-1">(${(item.file.size / 1024).toFixed(1)}kb)</span></span>
+                    <button onclick="removeFile(${index})" class="text-red-400 hover:bg-red-400/20 p-1 rounded shrink-0"><i data-lucide="x" class="w-3 h-3"></i></button>
+                `;
+                list.appendChild(li);
+            });
+            lucide.createIcons({ root: list });
+        }
+
+        function removeFile(index) {
+            state.filesToUpload.splice(index, 1);
+            renderSelectedFiles();
+        }
+
+        function clearFiles() {
+            state.filesToUpload = [];
+            renderSelectedFiles();
+            document.getElementById('upload-progress-container').classList.add('hidden');
+        }
+
+        const toBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]); // Eliminar el prefix data:
+            reader.onerror = error => reject(error);
+        });
+
+        async function startUpload() {
+            if (!state.currentRepo || state.filesToUpload.length === 0) return;
+
+            let basePath = document.getElementById('upload-path').value.trim();
+            if (basePath && !basePath.endsWith('/')) basePath += '/';
+            if (basePath.startsWith('/')) basePath = basePath.substring(1);
+
+            const progContainer = document.getElementById('upload-progress-container');
+            const progBar = document.getElementById('upload-progress-bar');
+            const progText = document.getElementById('upload-status-text');
+            const progPerc = document.getElementById('upload-percentage');
+
+            progContainer.classList.remove('hidden');
+
+            let successCount = 0;
+            const total = state.filesToUpload.length;
+            const owner = state.currentRepo.owner.login;
+            const repo = state.currentRepo.name;
+
+            for (let i = 0; i < total; i++) {
+                const item = state.filesToUpload[i];
+                const fullPath = basePath + item.path.replace(/\\/g, '/'); // normalizar
+
+                progText.textContent = `Subiendo: ${item.file.name}`;
+                const perc = Math.round((i / total) * 100);
+                progBar.style.width = `${perc}%`;
+                progPerc.textContent = `${perc}%`;
+
+                try {
+                    const base64Content = await toBase64(item.file);
+
+                    // 1. Check if file exists to get SHA
+                    let sha = undefined;
+                    try {
+                        const existing = await api(`/repos/${owner}/${repo}/contents/${encodeURIComponent(fullPath)}`);
+                        if (existing && existing.sha) sha = existing.sha;
+                    } catch (e) { /* File doesn't exist, proceed to create */ }
+
+                    // 2. Upload / Update
+                    const payload = {
+                        message: `WC Manager: Update ${item.file.name}`,
+                        content: base64Content,
+                        ...(sha && { sha })
+                    };
+
+                    await api(`/repos/${owner}/${repo}/contents/${encodeURIComponent(fullPath)}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+
+                    successCount++;
+                } catch (error) {
+                    console.error("Upload error for", item.path, error);
+                    showToast(`Error al subir ${item.file.name}`, 'error');
+                }
+            }
+
+            progBar.style.width = `100%`;
+            progPerc.textContent = `100%`;
+            progText.textContent = "Carga completada";
+            progText.classList.replace('text-primary', 'text-green-500');
+            progBar.classList.replace('bg-primary', 'bg-green-500');
+
+            showToast(`Se subieron ${successCount}/${total} archivos.`, successCount === total ? 'success' : 'warning');
+
+            setTimeout(() => {
+                clearFiles();
+                progContainer.classList.add('hidden');
+                progText.classList.replace('text-green-500', 'text-primary');
+                progBar.classList.replace('bg-green-500', 'bg-primary');
+                progBar.style.width = '0%';
+            }, 3000);
+        }
+
+        // --- MÓDULO SANDBOX (NAVEGADOR Y TESTER) ---
+        function populateSandboxRepos() {
+            const select = document.getElementById('sandbox-repo-select');
+            select.innerHTML = '<option value="">Seleccione un repositorio...</option>';
+
+            state.repos.forEach(repo => {
+                const isApp = repo.topics && repo.topics.includes(APP_TOPIC);
+                const opt = document.createElement('option');
+                opt.value = repo.id;
+                opt.textContent = `${isApp ? '★ ' : ''}${repo.name}`;
+                select.appendChild(opt);
+            });
+
+            // Si ya hay uno seleccionado, mantenerlo
+            if (state.sandboxCurrentRepo) {
+                select.value = state.sandboxCurrentRepo.id;
+            }
+        }
+
+        async function loadSandboxRepoFiles(path = '') {
+            const select = document.getElementById('sandbox-repo-select');
+            const repoId = select.value;
+            if (!repoId) {
+                document.getElementById('sandbox-file-list').innerHTML = '<p class="text-slate-500 text-sm text-center mt-4">Selecciona un repo.</p>';
+                return;
+            }
+
+            state.sandboxCurrentRepo = state.repos.find(r => r.id == repoId);
+            state.sandboxCurrentPath = path;
+            document.getElementById('sandbox-current-path').textContent = '/' + path;
+
+            const list = document.getElementById('sandbox-file-list');
+            list.innerHTML = '<div class="flex justify-center p-4"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-primary"></i></div>';
+            lucide.createIcons({ root: list });
+
+            try {
+                const owner = state.sandboxCurrentRepo.owner.login;
+                const repo = state.sandboxCurrentRepo.name;
+                const endpoint = path ? `/repos/${owner}/${repo}/contents/${path}` : `/repos/${owner}/${repo}/contents`;
+
+                const contents = await api(endpoint);
+                list.innerHTML = '';
+
+                if (!Array.isArray(contents)) {
+                    list.innerHTML = '<p class="text-slate-500 text-sm text-center p-2">Ruta no válida o vacía.</p>';
+                    return;
+                }
+
+                // Sort: directories first
+                contents.sort((a, b) => {
+                    if (a.type === b.type) return a.name.localeCompare(b.name);
+                    return a.type === 'dir' ? -1 : 1;
+                });
+
+                contents.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full text-left p-2 hover:bg-slate-800 rounded flex items-center justify-between group transition";
+
+                    if (item.type === 'dir') {
+                        btn.onclick = () => loadSandboxRepoFiles(item.path);
+                        btn.innerHTML = `<div class="flex items-center gap-2 text-sm text-blue-300"><i data-lucide="folder" class="w-4 h-4 fill-blue-900/30"></i> <span class="truncate">${item.name}</span></div>`;
+                    } else {
+                        const isJS = item.name.endsWith('.js');
+                        btn.innerHTML = `
+                            <div class="flex items-center gap-2 text-sm text-slate-300 truncate">
+                                <i data-lucide="file-code-2" class="w-4 h-4 text-slate-500 shrink-0"></i> 
+                                <span class="truncate">${item.name}</span>
+                            </div>
+                            ${isJS ? `<span onclick="injectComponent('${item.path}')" class="opacity-0 group-hover:opacity-100 bg-primary/20 hover:bg-primary/40 text-primary text-[10px] px-2 py-1 rounded transition shrink-0">Inyectar</span>` : ''}
+                        `;
+                    }
+                    list.appendChild(btn);
+                });
+                lucide.createIcons({ root: list });
+
+            } catch (err) {
+                list.innerHTML = `<p class="text-red-400 text-xs text-center p-2">Error: ${err.message}</p>`;
+            }
+        }
+
+        function navigateUp() {
+            if (!state.sandboxCurrentPath) return;
+            const parts = state.sandboxCurrentPath.split('/');
+            parts.pop();
+            loadSandboxRepoFiles(parts.join('/'));
+        }
+
+        // --- INYECCIÓN Y PRUEBA ---
+        async function injectComponent(path) {
+            const owner = state.sandboxCurrentRepo.owner.login;
+            const repo = state.sandboxCurrentRepo.name;
+
+            try {
+                showToast('Descargando componente...', 'info');
+                // Obtener archivo
+                const response = await api(`/repos/${owner}/${repo}/contents/${path}`);
+
+                // GitHub devuelve content en base64
+                // Usamos decodeURIComponent(escape(atob())) para manejar correctamente UTF-8
+                const jsContent = decodeURIComponent(escape(atob(response.content)));
+
+                // Inyectar script en el body
+                const scriptEl = document.createElement('script');
+                scriptEl.type = 'module';
+                scriptEl.textContent = `
+                    try {
+                        ${jsContent}
+                    } catch(e) {
+                        console.error('Error en componente inyectado [${path}]:', e);
+                    }
+                `;
+                document.body.appendChild(scriptEl);
+
+                // Actualizar lista UI
+                state.injectedComponents.push(path);
+                renderInjectedList();
+                showToast('Componente inyectado con éxito', 'success');
+
+            } catch (err) {
+                showToast('Error al inyectar: ' + err.message, 'error');
+            }
+        }
+
+        function renderInjectedList() {
+            const list = document.getElementById('injected-components-list');
+            list.innerHTML = '';
+            if (state.injectedComponents.length === 0) {
+                list.innerHTML = '<li class="text-slate-500 text-xs italic text-center mt-2">Ninguno cargado aún.</li>';
+                return;
+            }
+            state.injectedComponents.forEach(path => {
+                const li = document.createElement('li');
+                li.className = "flex items-center gap-2 bg-slate-800 p-1.5 rounded border border-slate-700 text-xs text-green-400 font-mono";
+                li.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> <span class="truncate">${path.split('/').pop()}</span>`;
+                list.appendChild(li);
+            });
+            lucide.createIcons({ root: list });
+        }
+
+        function runSandboxHTML() {
+            const html = document.getElementById('sandbox-html-input').value;
+            const root = document.getElementById('sandbox-dom-root');
+            root.innerHTML = html;
+        }
+
+        function clearSandbox() {
+            document.getElementById('sandbox-dom-root').innerHTML = '';
+        }
+
+    </script>
+</body>
+
+</html>
