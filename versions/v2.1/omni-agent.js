@@ -212,6 +212,7 @@ class OmniAgent extends HTMLElement {
     // ==========================================
 
     getSystemPrompt() {
+        // Generate a lightweight map of the DOM to give the agent instant "sight"
         const pageSnapshot = this.getDOMSnapshot(document.body, 0);
 
         return `You are OmniAgent, an advanced AI embedded in the user's webpage. You have "God Mode" access to the DOM and Javascript execution environment.
@@ -239,6 +240,7 @@ EXECUTION RULES:
 7. Keep your conversational responses concise.`;
     }
 
+    // Creates a minified map of the DOM, skipping huge text blocks and noisy tags
     getDOMSnapshot(element, depth = 0) {
         if (depth > 6) return "...";
         if (!element) return "";
@@ -430,6 +432,7 @@ EXECUTION RULES:
 
                 this.messages.push({ role: 'assistant', content: responseRaw });
 
+                // Check if the agent wants to execute code
                 const jsMatch = responseRaw.match(/<run_js>([\s\S]*?)<\/run_js>/);
 
                 if (jsMatch) {
@@ -438,8 +441,10 @@ EXECUTION RULES:
 
                     if (displayContent) this.appendMessage('assistant', displayContent);
 
+                    // Visual feedback of execution
                     this.appendMessage('assistant', `<div class="code-exec-block"><div class="code-exec-title">⚡ Agent Executing Code</div><pre><code>${this.escapeHTML(rawCode)}</code></pre></div>`, true);
 
+                    // Execute natively in host window context
                     let jsResult;
                     try {
                         const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
@@ -449,13 +454,17 @@ EXECUTION RULES:
                         jsResult = typeof result === 'object' ? JSON.stringify(result) : String(result);
                         this.appendMessage('system', `Result: ${jsResult.substring(0, 100)}${jsResult.length > 100 ? '...' : ''}`);
 
+                        // Feed back to loop
                         this.messages.push({ role: 'user', content: `<js_result>\n${jsResult}\n</js_result>` });
                     } catch (err) {
                         jsResult = err.toString();
                         this.appendMessage('system', `Error: ${jsResult}`);
+                        // Feed error back to allow self-correction
                         this.messages.push({ role: 'user', content: `<js_error>\n${jsResult}\n</js_error>` });
                     }
+                    // Loop continues automatically
                 } else {
+                    // No JS tags, agent is done
                     this.appendMessage('assistant', responseRaw);
                     loopActive = false;
                 }
@@ -687,6 +696,7 @@ EXECUTION RULES:
             </div>
         `;
 
+        // Trusted Types Bypass for ultra-secure hostile sites (like Discord)
         if (window.trustedTypes && window.trustedTypes.createPolicy) {
             try {
                 if (!window.omniAgentPolicy) {
@@ -744,6 +754,13 @@ EXECUTION RULES:
             chatInput.style.height = (chatInput.scrollHeight) + 'px';
         });
         sr.getElementById('send-btn').addEventListener('click', () => this.submitChat());
+
+        sr.getElementById('set-provider').addEventListener('change', (e) => {
+            const link = sr.getElementById('api-link');
+            if (e.target.value === 'openai') { link.href = 'https://platform.openai.com/api-keys'; link.innerText = 'Get an OpenAI API Key'; }
+            else if (e.target.value === 'claude') { link.href = 'https://console.anthropic.com/settings/keys'; link.innerText = 'Get an Anthropic API Key'; }
+            else { link.href = 'https://aistudio.google.com/app/apikey'; link.innerText = 'Get a Google Gemini API Key'; }
+        });
 
         // Settings Logic
         sr.getElementById('btn-save-profile').addEventListener('click', async () => {
@@ -813,7 +830,7 @@ EXECUTION RULES:
         if (this.profiles.length > 0) {
             await this.initActiveProfile();
             if (this.messages.length === 0) {
-                this.appendMessage('system', "OmniAgent initialized with 'God Mode' access to the DOM.");
+                this.appendMessage('system', "OmniAgent initialized with 'God Mode' access to the DOM. How can I modify this page for you?");
             }
         }
     }
