@@ -47,6 +47,7 @@ class OmniAgent extends HTMLElement {
         const vault = JSON.parse(vaultStr);
 
         const salt = this.base64ToBuffer(vault.salt);
+        this.vaultSalt = salt;
         const iv = this.base64ToBuffer(vault.iv);
         const data = this.base64ToBuffer(vault.data);
 
@@ -76,24 +77,22 @@ class OmniAgent extends HTMLElement {
         return new Uint8Array(atob(b64).split("").map(c => c.charCodeAt(0)));
     }
 
-    async saveEncryptedLocalData(salt = null) {
-        if (!this.vaultKey || !this.pat || !this.GIST_ID) return;
-        const currentVault = JSON.parse(localStorage.getItem('omniagent_vault') || '{}');
-        const finalSalt = salt || this.base64ToBuffer(currentVault.salt);
-        
+    async saveEncryptedLocalData() {
+        if (!this.vaultKey || !this.pat || !this.GIST_ID || !this.vaultSalt) return;
+
         const enc = new TextEncoder();
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const payload = JSON.stringify({ pat: this.pat, profiles: this.profiles });
-        
+
         const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, this.vaultKey, enc.encode(payload));
-        
+
         localStorage.setItem('omniagent_vault', JSON.stringify({
-            salt: this.bufferToBase64(finalSalt),
+            salt: this.bufferToBase64(this.vaultSalt),
             iv: this.bufferToBase64(iv),
             data: this.bufferToBase64(ciphertext),
             gistId: this.GIST_ID
         }));
-        
+
         localStorage.removeItem('omniagent_profiles'); // Clean up plain text
     }
 
@@ -110,11 +109,25 @@ class OmniAgent extends HTMLElement {
             if (!res.ok) throw new Error("Invalid GitHub PAT or missing gist permissions.");
             const gists = await res.json();
             let gist = gists.find(g => g.files['profiles.json'] && g.description === 'OmniAgent Cloud Vault');
-            
+
             let gistId;
+            let existingSaltStr = null;
             if (gist) {
                 gistId = gist.id;
                 status.innerText = "Existing Vault found. Linking...";
+
+                // Fetch the existing gist to extract the salt
+                const resGist = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `Bearer ${pat}`, 'Accept': 'application/vnd.github+json' }
+                });
+                const gistData = await resGist.json();
+                const fileContent = gistData.files['profiles.json']?.content;
+                if (fileContent && fileContent.trim() !== '' && fileContent !== '{}') {
+                    try {
+                        const parsed = JSON.parse(fileContent);
+                        if (parsed.salt) existingSaltStr = parsed.salt;
+                    } catch (e) { }
+                }
             } else {
                 status.innerText = "Creating new Vault...";
                 const createRes = await fetch('https://api.github.com/gists', {
@@ -132,19 +145,26 @@ class OmniAgent extends HTMLElement {
 
             // Generate Local Crypto
             const enc = new TextEncoder();
-            const salt = crypto.getRandomValues(new Uint8Array(16));
+            let salt;
+            if (existingSaltStr) {
+                salt = this.base64ToBuffer(existingSaltStr);
+            } else {
+                salt = crypto.getRandomValues(new Uint8Array(16));
+            }
+            this.vaultSalt = salt;
+
             const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
             this.vaultKey = await crypto.subtle.deriveKey(
                 { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
                 keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
             );
-            
+
             this.pat = pat;
             this.GIST_ID = gistId;
             this.isVaultSetup = true;
 
-            await this.saveEncryptedLocalData(salt);
-            
+            await this.saveEncryptedLocalData();
+
             // Sync with cloud
             const cloudProfiles = await this.fetchVault();
             if (Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
@@ -161,7 +181,7 @@ class OmniAgent extends HTMLElement {
             this.updateVaultUI();
             this.renderProfilesList();
             await this.initActiveProfile();
-            
+
             status.innerText = "Vault Setup & Synced Successfully!";
             status.style.color = "#10b981";
 
@@ -180,6 +200,7 @@ class OmniAgent extends HTMLElement {
 
         return JSON.stringify({
             v: 1,
+            salt: this.bufferToBase64(this.vaultSalt),
             iv: this.bufferToBase64(iv),
             data: this.bufferToBase64(ciphertext)
         });
@@ -1090,7 +1111,7 @@ EXECUTION RULES:
             const accHeader = document.createElement('div');
             accHeader.className = 'accordion-header';
             accHeader.innerHTML = `<span>${providerNames[provider] || provider} (${groups[provider].length})</span> <span class="sign">+</span>`;
-            
+
             const accContent = document.createElement('div');
             accContent.className = 'accordion-content';
 
@@ -1127,14 +1148,14 @@ EXECUTION RULES:
                     sr.getElementById('set-provider').value = p.provider;
                     // Trigger change to update helper link
                     sr.getElementById('set-provider').dispatchEvent(new Event('change'));
-                    
+
                     sr.getElementById('set-name').value = p.name;
                     sr.getElementById('set-key').value = p.apiKey;
                     sr.getElementById('edit-profile-id').value = p.id;
                     sr.getElementById('profile-form-title').innerText = 'Edit Profile';
                     sr.getElementById('btn-save-profile').innerText = 'Save Changes';
                     sr.getElementById('btn-cancel-edit').style.display = 'block';
-                    
+
                     // Switch to Profiles tab if not there
                     sr.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
                     sr.querySelector('.segment[data-tab="profiles"]').classList.add('active');
