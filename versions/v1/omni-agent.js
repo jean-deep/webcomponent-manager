@@ -94,7 +94,7 @@ class OmniAgent extends HTMLElement {
         let models = [];
         try {
             if (profile.provider === 'openai') {
-                const res = await fetch('https://api.openai.com/v1/models', {
+                const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://api.openai.com/v1/models', {
                     headers: { 'Authorization': `Bearer ${profile.apiKey}` }
                 });
                 const data = await res.json();
@@ -102,7 +102,7 @@ class OmniAgent extends HTMLElement {
                 models = data.data.filter(m => m.id.includes('gpt')).map(m => m.id).sort().reverse();
             }
             else if (profile.provider === 'gemini') {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${profile.apiKey}`);
+                const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://generativelanguage.googleapis.com/v1beta/models?key=${profile.apiKey}');
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message);
                 models = data.models
@@ -111,7 +111,7 @@ class OmniAgent extends HTMLElement {
                     .sort().reverse();
             }
             else if (profile.provider === 'claude') {
-                const res = await fetch('https://api.anthropic.com/v1/models', {
+                const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://api.anthropic.com/v1/models', {
                     headers: {
                         'x-api-key': profile.apiKey,
                         'anthropic-version': '2023-06-01',
@@ -144,7 +144,7 @@ class OmniAgent extends HTMLElement {
 
         if (p.provider === 'openai') {
             const messages = [{ role: 'system', content: sysPrompt }, ...history];
-            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${p.apiKey}` },
                 body: JSON.stringify({ model: p.model, messages })
@@ -158,7 +158,7 @@ class OmniAgent extends HTMLElement {
                 role: m.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: m.content }]
             }));
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${p.model}:generateContent?key=${p.apiKey}`, {
+            const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://generativelanguage.googleapis.com/v1beta/models/${p.model}:generateContent?key=${p.apiKey}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -181,7 +181,7 @@ class OmniAgent extends HTMLElement {
                 }
             }
 
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
+            const res = await fetch('https://omni-proxy.sidorokarcaria.workers.dev?url=https://api.anthropic.com/v1/messages', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
