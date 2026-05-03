@@ -119,7 +119,7 @@ Once executed, a floating OmniAgent button will appear in the bottom right corne
 OmniAgent is designed with privacy-first principles.
 
 - **No Telemetry**: OmniAgent does not collect usage statistics or tracking data.
-- **CORS Proxies**: Since browsers block cross-origin requests, OmniAgent uses a transparent proxy (`https://cors-anywhere.herokuapp.com/`) to route API requests. You may change `this.proxyUrl` in the source code to your own secure proxy if desired.
+- **CORS Proxies**: Since browsers block cross-origin requests, OmniAgent uses a transparent proxy (`https://omni-proxy.sidorokarcaria.workers.dev/`) to route API requests. You may change `this.proxyUrl` in the source code to your own secure proxy if desired.
 - **Trusted Types**: OmniAgent includes a bypass for strict TrustedTypes CSP policies to ensure it can inject the UI safely into highly hostile/secure environments (like Discord or enterprise portals).
 
 *Built with ❤️ for a decentralized, agentic web.*
