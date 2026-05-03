@@ -62,26 +62,20 @@ To enable **BYOV Cloud Sync**, you will need:
 OmniAgent is a self-contained Web Component. You can load it into any page via a script tag or bookmarklet:
 
 ```javascript
-// Bookmarklet Code
-javascript:(function(){
-    const script = document.createElement('script');
-    script.src = 'path/to/omni-agent.js'; // Serve locally or via CDN
-    document.body.appendChild(script);
-})();
-```
-
-```javascript
-// Bookmarklet Code
 javascript:(function(){
     if(document.querySelector('omni-agent')) return console.log('OmniAgent already active.');
     const script = document.createElement('script');
-    //script.src = 'path/to/omni-agent.js'; // Serve locally or via CDN
     script.src = 'https://cdn.jsdelivr.net/gh/jean-deep/webcomponent-manager@main/versions/v3/v3.0/omni-agent.js';
     script.onload = () => {
         document.body.appendChild(document.createElement('omni-agent'));
     };
     document.head.appendChild(script);
 })();
+```
+
+```js
+// Serve locally or via CDN
+    script.src = 'path/to/omni-agent.js';
 ```
 
 Once executed, a floating OmniAgent button will appear in the bottom right corner of the webpage.
