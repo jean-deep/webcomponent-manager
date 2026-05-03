@@ -1,0 +1,5 @@
+The anti-CORS measure failed. It is still not working, some requests are blocked. Need to fix this.
+
+Ensure the AI Horde's models can generate executable code by catching the response and saving partial results, then appending them to the code block.
+
+For the tools mode, export all the code OmniAgent successfully executes to github, to create a dictionary of working calls, with title, description, the code and OmniAgent-generated tags. When the user switches to tools mode, the Agent uses questions to guide the user towards the right tool (if available) and then fetches it from the github repository they're stored, then executes it. I think this can only work if OmniAgent extracts specific words from the user's prompt/response then generates its own response based on the results from the repository. Answers will be generic and, when applicable, work as menus, telling the user to choose an option. Tools only mode does not use an AI API provider, at all, so it is reliable, always available and free, but it's also static and immutable, in the sense that it only works with code that has already been executed and exported to the repository.
